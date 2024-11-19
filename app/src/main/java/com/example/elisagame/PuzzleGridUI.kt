@@ -1,38 +1,71 @@
 package com.example.elisagame
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import kotlin.math.sqrt
+import androidx.compose.ui.graphics.Color
+
 
 @Composable
 fun PuzzleGridUI(
+    gridSize: Int = 3, // Grid is always 3x3
     currentPieces: List<Bitmap?>,
     emptyIndex: Int,
     onTileClick: (Int) -> Unit,
     isPuzzleSolved: Boolean,
-    onPuzzleSolved: () -> Unit
+    onPuzzleSolved: () -> Unit,
+    imageWidth: Int,
+    imageHeight: Int
 ) {
-    if (isPuzzleSolved) {
-        onPuzzleSolved()
-    } else {
-        PuzzleGrid(
-            currentPieces = currentPieces,
-            emptyIndex = emptyIndex,
-            onTileClick = onTileClick
-        )
+    // Calculate the aspect ratio of the original image
+    val aspectRatio = imageWidth.toFloat() / imageHeight.toFloat()
+
+    // Use screen width to determine the size of each tile
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val tileWidth = screenWidth / gridSize
+    val tileHeight = tileWidth / aspectRatio
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(gridSize),
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(aspectRatio) // Maintain the image's aspect ratio
+            .padding(8.dp)
+    ) {
+        items(currentPieces.size) { index ->
+            val tile = currentPieces[index]
+            Box(
+                modifier = Modifier
+                    .size(tileWidth, tileHeight) // Set the size of each tile
+                    .background(if (tile == null) Color.Gray else Color.Transparent)
+                    .clickable { onTileClick(index) }
+            ) {
+                tile?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
     }
 }
+
 
 @Composable
 fun PuzzleGrid(
@@ -40,7 +73,16 @@ fun PuzzleGrid(
     emptyIndex: Int,
     onTileClick: (Int) -> Unit
 ) {
-    val gridSize = 3 // Fixed grid size
+    val gridSize = sqrt(currentPieces.size.toDouble()).toInt()
+
+    // Access screen configuration for dynamic sizing
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+
+    // Calculate dynamic tile dimensions
+    val tileWidth = (screenWidth / gridSize) * 0.9f // Leave some space for padding
+    val tileHeight = tileWidth // For square tiles; adjust if rectangles are desired
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -58,8 +100,9 @@ fun PuzzleGrid(
 
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
-                            .padding(4.dp)
+                            .width(tileWidth)
+                            .height(tileHeight)
+                            .padding(2.dp)
                             .background(
                                 color = if (piece == null) ComposeColor.Gray else ComposeColor.White,
                                 shape = RoundedCornerShape(4.dp)
@@ -82,4 +125,3 @@ fun PuzzleGrid(
         }
     }
 }
-

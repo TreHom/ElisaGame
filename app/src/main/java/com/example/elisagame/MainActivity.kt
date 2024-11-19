@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,12 +25,16 @@ import com.example.elisagame.functions.PuzzleShuffler
 import com.example.elisagame.functions.PuzzleValidator
 import com.example.elisagame.ui.theme.ElisaGameTheme
 import java.io.InputStream
+import androidx.exifinterface.media.ExifInterface
+import android.graphics.Matrix
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
     private lateinit var permissionsHandler: PermissionsHandler
     private var selectedImageUri by mutableStateOf<Uri?>(null)
+    private var tiles: MutableList<Bitmap?> = mutableListOf()
+    private var originalTiles: List<Bitmap?> = listOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,10 +65,53 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun GameScreen() {
-        var tiles by remember { mutableStateOf<List<Bitmap?>>(emptyList()) }
+        var tiles by remember { mutableStateOf<MutableList<Bitmap?>>(mutableListOf()) }
         var originalTiles by remember { mutableStateOf<List<Bitmap?>>(emptyList()) }
         var emptyIndex by remember { mutableStateOf(-1) }
         var isPuzzleSolved by remember { mutableStateOf(false) }
+        var isInitialized by remember { mutableStateOf(false) }
+        var imageWidth by remember { mutableStateOf(0) }
+        var imageHeight by remember { mutableStateOf(0) }
+
+        // Timer state
+        var timer by remember { mutableStateOf(0) } // Time in seconds
+        var isTimerRunning by remember { mutableStateOf(false) }
+
+        // Coroutine to manage the timer
+        LaunchedEffect(isTimerRunning) {
+            if (isTimerRunning) {
+                while (isTimerRunning) {
+                    kotlinx.coroutines.delay(1000L)
+                    timer++
+                }
+            }
+        }
+
+        LaunchedEffect(selectedImageUri) {
+            if (selectedImageUri != null && !isInitialized) {
+                val bitmap = getBitmapFromUri(selectedImageUri!!)
+                bitmap?.let {
+                    imageWidth = it.width
+                    imageHeight = it.height
+
+                    tiles = ImageSplitter.splitImage(it).toMutableList()
+                    originalTiles = tiles.toList()
+
+                    PuzzleShuffler.shufflePuzzle(tiles)
+                    emptyIndex = tiles.indexOf(null)
+
+                    isInitialized = true
+                    isPuzzleSolved = false
+
+                    // Start the timer
+                    timer = 0
+                    isTimerRunning = true
+
+                    Log.d("GameScreen", "Tiles initialized: $tiles")
+                    Log.d("GameScreen", "Empty index: $emptyIndex")
+                }
+            }
+        }
 
         ElisaGameTheme {
             Scaffold(
@@ -76,6 +124,15 @@ class MainActivity : ComponentActivity() {
                     ) {
                         // Greeting Text
                         Greeting(name = "Welcome to ElisaGame!")
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Timer Display
+                        Text(
+                            text = "Timer: ${timer}s",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(8.dp)
+                        )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -95,41 +152,36 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Handle Image Selection
-                        selectedImageUri?.let { uri ->
-                            val bitmap = getBitmapFromUri(uri)
-                            bitmap?.let {
-                                tiles = ImageSplitter.splitImage(it) // Updated call
-                                originalTiles = tiles.toList()
-                                PuzzleShuffler.shufflePuzzle(tiles.toMutableList())
-                                emptyIndex = tiles.indexOf(null)
-                                isPuzzleSolved = false
-                            }
-                        }
-
-                        // Render the Puzzle Grid UI
+                        // Render Puzzle Grid UI
                         if (tiles.isNotEmpty()) {
                             PuzzleGridUI(
                                 currentPieces = tiles,
                                 emptyIndex = emptyIndex,
                                 onTileClick = { clickedIndex ->
                                     if (MovementLogic.canMove(clickedIndex, emptyIndex, 3, 3)) {
-                                        tiles = tiles.toMutableList().apply {
-                                            this[emptyIndex] = this[clickedIndex]
-                                            this[clickedIndex] = null
-                                        }
+                                        tiles[emptyIndex] = tiles[clickedIndex]
+                                        tiles[clickedIndex] = null
                                         emptyIndex = clickedIndex
 
-                                        // Check if the puzzle is solved
                                         if (PuzzleValidator.isSolved(tiles, originalTiles)) {
                                             isPuzzleSolved = true
+                                            tiles[emptyIndex] = originalTiles[emptyIndex]
+
+                                            // Stop the timer
+                                            isTimerRunning = false
+
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "Puzzle Solved in $timer seconds!",
+                                                Toast.LENGTH_LONG
+                                            ).show()
                                         }
                                     }
                                 },
                                 isPuzzleSolved = isPuzzleSolved,
-                                onPuzzleSolved = {
-                                    Toast.makeText(this@MainActivity, "Puzzle Solved!", Toast.LENGTH_LONG).show()
-                                }
+                                onPuzzleSolved = {},
+                                imageWidth = imageWidth,
+                                imageHeight = imageHeight
                             )
                         } else {
                             Text(
@@ -144,6 +196,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
+
+
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         galleryLauncher.launch(intent)
@@ -152,11 +207,43 @@ class MainActivity : ComponentActivity() {
     private fun getBitmapFromUri(uri: Uri): Bitmap? {
         return try {
             val inputStream: InputStream? = contentResolver.openInputStream(uri)
-            BitmapFactory.decodeStream(inputStream)
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+
+            // Correct the orientation using Exif data
+            inputStream?.close() // Close the input stream to avoid resource leaks
+            val exif = uri.path?.let { ExifInterface(contentResolver.openInputStream(uri)!!) }
+            val orientation = exif?.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> rotateBitmap(bitmap, 90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> rotateBitmap(bitmap, 180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> rotateBitmap(bitmap, 270f)
+                else -> bitmap
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
+    }
+
+    private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
+        val matrix = Matrix().apply { postRotate(degrees) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+
+    private fun cleanupResources() {
+        // Release existing bitmap resources
+        ImageSplitter.cleanupBitmaps(tiles)
+        tiles.clear()
+        originalTiles = listOf()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cleanupResources()
     }
 }
 
