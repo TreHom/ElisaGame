@@ -74,21 +74,30 @@ class MainActivity : ComponentActivity() {
         var imageHeight by remember { mutableStateOf(0) }
 
         // Timer state
-        var timer by remember { mutableStateOf(0) } // Time in seconds
+        var timer by remember { mutableStateOf(0L) }
         var isTimerRunning by remember { mutableStateOf(false) }
+        var resetTrigger by remember { mutableStateOf(0) }
 
-        // Coroutine to manage the timer
-        LaunchedEffect(isTimerRunning) {
+        // Handle timer
+        LaunchedEffect(isTimerRunning, resetTrigger) {
             if (isTimerRunning) {
+                val startTime = System.currentTimeMillis() - timer
                 while (isTimerRunning) {
-                    kotlinx.coroutines.delay(1000L)
-                    timer++
+                    kotlinx.coroutines.delay(100L)
+                    timer = System.currentTimeMillis() - startTime
                 }
+            } else {
+                timer = 0L
             }
         }
 
+        // Handle image selection
         LaunchedEffect(selectedImageUri) {
-            if (selectedImageUri != null && !isInitialized) {
+            if (selectedImageUri != null) {
+                isTimerRunning = false
+                timer = 0L
+                resetTrigger++
+
                 val bitmap = getBitmapFromUri(selectedImageUri!!)
                 bitmap?.let {
                     imageWidth = it.width
@@ -103,13 +112,16 @@ class MainActivity : ComponentActivity() {
                     isInitialized = true
                     isPuzzleSolved = false
 
-                    // Start the timer
-                    timer = 0
+                    kotlinx.coroutines.delay(300L)
                     isTimerRunning = true
-
-                    Log.d("GameScreen", "Tiles initialized: $tiles")
-                    Log.d("GameScreen", "Empty index: $emptyIndex")
                 }
+            }
+        }
+
+        // Handle UI reset for missing piece restoration
+        LaunchedEffect(resetTrigger) {
+            if (isPuzzleSolved) {
+                kotlinx.coroutines.delay(300L) // Allow UI to update
             }
         }
 
@@ -122,21 +134,18 @@ class MainActivity : ComponentActivity() {
                             .padding(innerPadding)
                             .padding(16.dp)
                     ) {
-                        // Greeting Text
                         Greeting(name = "Welcome to ElisaGame!")
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Timer Display
                         Text(
-                            text = "Timer: ${timer}s",
+                            text = "Timer: ${formatTime(timer)}",
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(8.dp)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Button to Open Gallery
                         Button(
                             onClick = {
                                 if (permissionsHandler.checkPermission()) {
@@ -152,7 +161,6 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Render Puzzle Grid UI
                         if (tiles.isNotEmpty()) {
                             PuzzleGridUI(
                                 currentPieces = tiles,
@@ -165,14 +173,19 @@ class MainActivity : ComponentActivity() {
 
                                         if (PuzzleValidator.isSolved(tiles, originalTiles)) {
                                             isPuzzleSolved = true
-                                            tiles[emptyIndex] = originalTiles[emptyIndex]
 
-                                            // Stop the timer
+                                            // Restore the missing piece
+                                            val restoredIndex = ImageSplitter.restoreMissingPiece(tiles, originalTiles)
+                                            emptyIndex = restoredIndex
+
+                                            // Trigger UI recomposition
+                                            resetTrigger++
+
                                             isTimerRunning = false
 
                                             Toast.makeText(
                                                 this@MainActivity,
-                                                "Puzzle Solved in $timer seconds!",
+                                                "Puzzle Solved in ${formatTime(timer)}!",
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
@@ -199,9 +212,24 @@ class MainActivity : ComponentActivity() {
 
 
 
+
+
+
+    // Helper function to format the time
+    fun formatTime(milliseconds: Long): String {
+        val minutes = (milliseconds / 1000) / 60
+        val seconds = (milliseconds / 1000) % 60
+        val millis = milliseconds % 1000
+        return String.format("%02d:%02d.%03d", minutes, seconds, millis)
+    }
+
+
+
+
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         galleryLauncher.launch(intent)
+
     }
 
     private fun getBitmapFromUri(uri: Uri): Bitmap? {

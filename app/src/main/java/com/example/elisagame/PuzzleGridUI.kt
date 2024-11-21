@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +17,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import kotlin.math.sqrt
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 
 
 @Composable
@@ -31,40 +31,64 @@ fun PuzzleGridUI(
     imageWidth: Int,
     imageHeight: Int
 ) {
-    // Calculate the aspect ratio of the original image
-    val aspectRatio = imageWidth.toFloat() / imageHeight.toFloat()
-
-    // Use screen width to determine the size of each tile
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val tileWidth = screenWidth / gridSize
-    val tileHeight = tileWidth / aspectRatio
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(gridSize),
+    // BoxWithConstraints allows dynamic layout based on available space
+    BoxWithConstraints(
         modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(aspectRatio) // Maintain the image's aspect ratio
-            .padding(8.dp)
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        items(currentPieces.size) { index ->
-            val tile = currentPieces[index]
-            Box(
-                modifier = Modifier
-                    .size(tileWidth, tileHeight) // Set the size of each tile
-                    .background(if (tile == null) Color.Gray else Color.Transparent)
-                    .clickable { onTileClick(index) }
-            ) {
-                tile?.let {
-                    Image(
-                        bitmap = it.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize()
-                    )
+        val maxWidth = maxWidth
+        val maxHeight = maxHeight
+
+        // Calculate the aspect ratio of the original image
+        val aspectRatio = imageWidth.toFloat() / imageHeight.toFloat()
+
+        // Calculate the size of the grid container
+        val containerWidth: Dp
+        val containerHeight: Dp
+        if (maxWidth / maxHeight < aspectRatio) {
+            containerWidth = maxWidth
+            containerHeight = maxWidth / aspectRatio
+        } else {
+            containerWidth = maxHeight * aspectRatio
+            containerHeight = maxHeight
+        }
+
+        // Calculate tile dimensions
+        val tileWidth = containerWidth / gridSize
+        val tileHeight = containerHeight / gridSize
+
+        // Render the grid
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(gridSize),
+            modifier = Modifier
+                .width(containerWidth)
+                .height(containerHeight)
+                .background(Color.Black) // Optional background for the grid
+        ) {
+            items(currentPieces.size) { index ->
+                val tile = currentPieces[index]
+                Box(
+                    modifier = Modifier
+                        .size(tileWidth, tileHeight)
+                        .background(if (tile == null) Color.Gray else Color.Transparent)
+                        .clickable { onTileClick(index) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    tile?.let {
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
     }
 }
+
 
 
 @Composable
