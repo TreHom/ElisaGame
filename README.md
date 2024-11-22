@@ -4,4 +4,4 @@ Sliding puzzle game.
 
 Copy the repo.
 Build.
-Run on emuator or real device.
+Run on emulator or real device.
