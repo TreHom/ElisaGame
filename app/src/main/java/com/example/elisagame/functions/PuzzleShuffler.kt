@@ -26,7 +26,7 @@ object PuzzleShuffler {
         var emptyPos = findEmptyPosition(grid)
         val directions = listOf(Pair(0, 1), Pair(1, 0), Pair(0, -1), Pair(-1, 0)) // Right, Down, Left, Up
 
-        repeat(2) { // Perform 100 random valid moves
+        repeat(15) { // Perform 100 random valid moves
             val validMoves = directions.map { Pair(emptyPos.first + it.first, emptyPos.second + it.second) }
                 .filter { it.first in 0 until GRID_SIZE && it.second in 0 until GRID_SIZE }
 

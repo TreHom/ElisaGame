@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                             isPuzzleSolved = true
 
                                             // Restore the missing piece
-                                            val restoredIndex = ImageSplitter.restoreMissingPiece(tiles, originalTiles)
+                                            val restoredIndex = ImageSplitter.restoreMissingPiece(tiles)
                                             emptyIndex = restoredIndex
 
                                             // Trigger UI recomposition
@@ -189,6 +189,7 @@ class MainActivity : ComponentActivity() {
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
+
                                     }
                                 },
                                 isPuzzleSolved = isPuzzleSolved,
