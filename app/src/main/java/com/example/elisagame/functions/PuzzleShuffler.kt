@@ -6,10 +6,9 @@ import kotlin.random.Random
 
 object PuzzleShuffler {
 
-    private const val GRID_SIZE = 3 // Fixed grid size (3x3)
+    private const val GRID_SIZE = 3
 
     fun shufflePuzzle(pieces: MutableList<Bitmap?>) {
-        // Ensure the empty piece (null) is in the last position initially
         if (pieces.indexOf(null) != pieces.size - 1) {
             pieces.remove(null)
             pieces.add(null)
@@ -26,7 +25,7 @@ object PuzzleShuffler {
         var emptyPos = findEmptyPosition(grid)
         val directions = listOf(Pair(0, 1), Pair(1, 0), Pair(0, -1), Pair(-1, 0)) // Right, Down, Left, Up
 
-        repeat(15) { // Perform 100 random valid moves
+        repeat(25) { // Perform valid moves
             val validMoves = directions.map { Pair(emptyPos.first + it.first, emptyPos.second + it.second) }
                 .filter { it.first in 0 until GRID_SIZE && it.second in 0 until GRID_SIZE }
 

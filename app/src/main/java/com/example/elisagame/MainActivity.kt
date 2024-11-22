@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.elisagame.functions.ImageSplitter
 import com.example.elisagame.functions.MovementLogic
@@ -118,10 +116,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Handle UI reset for missing piece restoration
+        //Delay for UI
         LaunchedEffect(resetTrigger) {
             if (isPuzzleSolved) {
-                kotlinx.coroutines.delay(300L) // Allow UI to update
+                kotlinx.coroutines.delay(300L)
             }
         }
 
@@ -285,10 +283,4 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ElisaGameTheme {
-        Greeting("Welcome to ElisaGame!")
-    }
-}
+

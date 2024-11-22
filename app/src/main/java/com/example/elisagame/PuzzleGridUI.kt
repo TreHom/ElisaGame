@@ -103,9 +103,9 @@ fun PuzzleGrid(
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
 
-    // Calculate dynamic tile dimensions
-    val tileWidth = (screenWidth / gridSize) * 0.9f // Leave some space for padding
-    val tileHeight = tileWidth // For square tiles; adjust if rectangles are desired
+
+    val tileWidth = (screenWidth / gridSize) * 0.9f
+    val tileHeight = tileWidth
 
     Column(
         modifier = Modifier

@@ -10,12 +10,6 @@ object ImageSplitter {
     private var missingPieceIndex: Int = -1 // To track the removed piece's index
     private var missingPiece: Bitmap? = null // Store the removed piece separately
 
-    /**
-     * Splits the given bitmap into a grid of pieces and removes one random piece.
-     *
-     * @param bitmap The image to be split into pieces.
-     * @return A list of bitmap pieces with one piece replaced by null.
-     */
     fun splitImage(bitmap: Bitmap): List<Bitmap?> {
         val pieceWidth = bitmap.width / GRID_SIZE
         val pieceHeight = bitmap.height / GRID_SIZE
@@ -42,12 +36,7 @@ object ImageSplitter {
         return pieces
     }
 
-    /**
-     * Restores the missing piece in the puzzle by replacing the null entry with the stored missing piece.
-     *
-     * @param pieces The current list of puzzle pieces.
-     * @return The index of the restored piece or -1 if restoration failed.
-     */
+
     fun restoreMissingPiece(pieces: MutableList<Bitmap?>): Int {
         // Validate the missingPieceIndex
         if (missingPieceIndex !in pieces.indices) {
@@ -67,11 +56,6 @@ object ImageSplitter {
         return missingPieceIndex
     }
 
-    /**
-     * Cleans up memory by recycling all bitmaps in the given list and the missing piece.
-     *
-     * @param pieces The list of bitmap pieces to clean up.
-     */
     fun cleanupBitmaps(pieces: List<Bitmap?>) {
         pieces.forEach { it?.recycle() }
         missingPiece?.recycle()
